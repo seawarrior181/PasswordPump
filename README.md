@@ -1,5 +1,5 @@
 # PasswordPump
-An ATMega32u4 USB based credentials manager
+An ATMega32u4 USB based credentials manager.  See www.5volts.org for more information.
 
 The following libraries need to be installed if you're going to work with the source code:
 

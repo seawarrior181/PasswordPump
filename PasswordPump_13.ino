@@ -47,7 +47,6 @@
     - = outstanding
     ? = fixed but needs testing
     * = fixed
-  - Trouble entering password C@bbages8u2 for a certain account.
   - When \e is embedded in an account name (or username or pw), it is
     interpreted as the ESC character, and the input arrives empty. e.g. 
     INSIGHTORADB\entmetrics.  Only an issue when input via keyboard, not encoder
@@ -212,11 +211,8 @@
   =========
   - Copyright ©2018, ©2019 Daniel J Murphy <dan-murphy@comcast.net>
   
-  License TODO: make this more restrictive.
+  License
   =======
-  Daniel J. Murphy hereby disclaims all copyright interest in this
-  program written by Daniel J. Murphy.
-
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -587,10 +583,11 @@ uint8_t elements = MAIN_MENU_ELEMENTS;                                          
 char *currentMenu[MENU_SIZE];                                                   // holds the content of the currently displayed menu
 
 #define SEND_MENU_NUMBER          1
-#define SEND_MENU_ELEMENTS        6                                             // number of selections in the send creds menu
+#define SEND_MENU_ELEMENTS        7                                             // number of selections in the send creds menu
 const char * const sendMenu[] =       {          "Send User & Pass",            // menu picks appear only on the top line
-                                                 "Send Password",  
+                                                 "Send Password <RET>",         // sends the password then a carriage return
                                                  "Send Username",
+                                                 "Send Password",               // sends just the password w/ no carriage return (mostly for changing password)
                                                  "Send Acct",
                                                  "Edit Creds",                  // sends user to enterMenu menu
                                                  "Delete Acct",                 // delete the account
@@ -599,9 +596,10 @@ const char * const sendMenu[] =       {          "Send User & Pass",            
 #define SEND_USER_AND_PASSWORD    0                                             // locations of the send credentials menu items
 #define SEND_PASSWORD             1
 #define SEND_USERNAME             2
-#define SEND_ACCOUNT              3
-#define EDIT_ACCOUNT              4
-#define DELETE_ACCOUNT            5
+#define SEND_PASSWORD_NO_RET      3
+#define SEND_ACCOUNT              4
+#define EDIT_ACCOUNT              5
+#define DELETE_ACCOUNT            6
 
 #define EDIT_MENU_NUMBER          2
 #define EDIT_MENU_ELEMENTS        5                                             // the number of selections in the menu for editing credentials
@@ -628,7 +626,7 @@ uint8_t style[STYLE_SIZE];                                                      
                                                                                 // and password)
 
 #define LEN_ALL_CHARS             94
-#define DEFAULT_ALPHA_EDIT_POS    42                                            // allChars is sort of unnecessary TODO: eliminate allChars?
+#define DEFAULT_ALPHA_EDIT_POS    40                                            // allChars is sort of unnecessary TODO: eliminate allChars?
 #define DEFAULT_STYLE_EDIT_POS    30
 const char allChars[LEN_ALL_CHARS] =                                            // used to edit text via rotary encoder (164 bytes)
 " /?><,:';|}{][+_)(*&^%$#!~=\-@. 0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz"; 
@@ -699,6 +697,7 @@ void setUUID(uint8_t *password, uint8_t size, uint8_t appendNullTerm);
 void sendAccount(void);
 void sendUsername(void);
 void sendPassword(void);
+void sendRTN(void);
 void sendUsernameAndPassword(void);
 void sendAll(void);
 void DisplayLine1(char* lineToPrint);
@@ -786,9 +785,9 @@ void setKey(uint8_t pos);
 //- Main Program Control
 
 void setup() {                                                                  // runs first when the device is powered on
-//  Serial.begin(BAUD_RATE);                                                      // uncomment when debugging
-//  while(!Serial);                                                               // uncomment when debugging
-//  Serial.println("PP");                                                         // uncomment when debugging
+//  Serial.begin(BAUD_RATE);                                                    // uncomment when debugging
+//  while(!Serial);                                                             // uncomment when debugging
+//  Serial.println("PP");                                                       // uncomment when debugging
 
   pinMode(RED_PIN,   OUTPUT);                                                   // RGB LED pins
   pinMode(GREEN_PIN, OUTPUT);                                                   // "
@@ -1125,6 +1124,7 @@ void ProcessEvent() {                                                           
           break;
         case SET_SHOW_PASSWORD:
           showPasswordsFlag = !showPasswordsFlag;
+					writeShowPasswordsFlag();
           flipOnOff(showPasswordsFlag,SET_SHOW_PASSWORD,SH_PW_MENU_O_POS);      // set the menu item to Show Passwrd ON or Show Passwrd OFF.
           DisplayLine1(mainMenu[SET_SHOW_PASSWORD]);
           event = EVENT_NONE;
@@ -1212,11 +1212,16 @@ void ProcessEvent() {                                                           
             break; 
          case SEND_PASSWORD:                                                    
             sendPassword();                                                     // Send the password
+            sendRTN();                                                          // Send the carriage return
             DisplayLine2("Sent password");
             break;
          case SEND_USERNAME:                                                    
             sendUsername();                                                     // Send the username
             DisplayLine2("Sent username");
+            break;
+         case SEND_PASSWORD_NO_RET:
+            sendPassword();                                                     // Send the password
+            DisplayLine2("Sent password");
             break;
          case SEND_ACCOUNT:                                                     // Send the account name
             sendAccount();
@@ -1615,7 +1620,13 @@ void sendPassword() {                                                           
   char passwordChar[PASSWORD_SIZE];
   memcpy(passwordChar,password,PASSWORD_SIZE);
   Keyboard.begin();
-  Keyboard.println(passwordChar);                                               // type the password through the keyboard, no carriage return
+  Keyboard.print(passwordChar);                                                 // type the password through the keyboard, no carriage return
+  Keyboard.end();
+}
+
+void sendRTN() {
+  Keyboard.begin();
+  Keyboard.println("");                                                         // send a carriage return through the keyboard
   Keyboard.end();
 }
 

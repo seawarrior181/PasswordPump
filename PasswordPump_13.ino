@@ -1,11 +1,11 @@
 /*
   PasswordPump_13.ino
 
-  Project Name: PasswordPump, a password manager
+  Project Name: PasswordPump
   Version:      1.0
-  Date:         2018/09/22 - 2019/02/14
+  Date:         2018/09/22 - 2019/03/17
   Device:       Arduino Pro Micro w/ ATmega32u4
-  Language:     C
+  Language:     C++
   Memory:       32kB flash, 2.5kB SRAM, 1kB EEPROM
   EEprom:       internal=1kB, 25LC256 external=32kB 
   Clock Speed:  16MHz
@@ -14,6 +14,9 @@
   Components:   RGB LED, 128x32 LED display, one momentaty push button, one 
                 rotary encoder, 2 4.7kohm resistors for I2C, 3 220ohm resistors
                 for the RGB, 2 25LC256 external EEprom chips
+  Web Site: 		www.5volts.org
+  Code:					https://github.com/seawarrior181/PasswordPump
+  
   Purpose
   =======
   - To manage encrypted usernames and passwords and to type them in via 
@@ -46,38 +49,30 @@
   =============  
     - = outstanding
     ? = fixed but needs testing
+    ^ - can't reproduce
     * = fixed
   - When \e is embedded in an account name (or username or pw), it is
     interpreted as the ESC character, and the input arrives empty. e.g. 
     INSIGHTORADB\entmetrics.  Only an issue when input via keyboard, not encoder
+  - Sometimes deleting an account corrupts the doubly linked list that manages
+    the order in which the credentials are displayed.  When this happens the
+    user needs to restore from EEprom to get missing credentials back.
   - DisplayLine2 needs to be blanked out after retuning from Find or Add acct.
-  - Added account 'Add Account' and then deleted, corrupted linked list
-  - Added account to the end of the linked list, corrupted linked list
-  - When logging in via Remote Desktop and suppling the username and password,
-    we seem to 'hit return' after entering just the username.
   - When entering an account name 29 chars long via keyboard, nothing gets 
     entered.
   - automatic initialization after 10 failed logon attempts is prompting the 
     user to confirm the action.
-  - test UUID generation
-  - FixCorruption leaves the user hung without any accounts to find
-  - After deleting account change the location of the menu
   - in the switch statement for EVENT_SINGLE_CLICK the case statements 
     are not in order. When they are in order it doesn't evaluate 
     correctly.
-  - can't seem to send a <tab> character via the Keyboard.  Tried KEY_TAB, 
-    TAB_KEY, 0x2b, 0xB3, '  '.
-  ? single character usernames and passwords are not working well
-  ? we are authenticated after blowing all the creds away after 10 failures
-  ? The linked list is occasionally becoming corrupt. Added the ability to 
-    fix a corrupt linked list. Exact conditions of corruption unknown at this 
-    point.
-  ? we are only encrypting the first 16 characters of account name, username and
-    password.  The sha256 blocksize is 16.
-  ? single click after Reset brings you to alpha edit mode
+  ^ we are authenticated after blowing all the creds away after 10 failures
+  ^ single click after Reset brings you to alpha edit mode
   * Renaming an account in place corrupts the linked list; the account makes
     copies of itself all over the place (a loop in the linked list).  
     Workaround: add a new set of creds and delete the old set of creds.
+  * After deleting account change the location of the menu
+  * When logging in via Remote Desktop and suppling the username and password,
+    we seem to 'hit return' after entering just the username.
   * Should probably remove Keyboard ON/OFF from saved properties and always 
     default to Keyboard OFF; or make sure it is always OFF when backing up 
     EEProm.
@@ -117,19 +112,17 @@
   TODO / Enhancements
   ===================
     - = unimplemented
+    x = implemented but not tested  
     ? - tried to implement, ran into problems
     % - concerned there isn't enough memory left to implement
-    x = implemented but not tested  
     * - implemented and tested
   - consider halfing the number of possible accounts (from 256 to 128) and 
     doubling the size of the accountname, username, and password fields (from 32
     to 64).
-  - learn how to set the lock bits
   - ground unused pins
   - Add the ability to fix a corrupt linked list.
-  - salt the encrypted account name, username and password, probably with 4
-    bytes associated with the position of the account.  This will reduce the 
-    size of the master password from 15 to 11(?) or 12?
+  x ensure we don't read more bytes than that which we can accomodate in the 
+    buffer
   ? add a feature whereby the unit factory resets after two triple clicks, even
     if not yet authenticated. (commented out, caused problems)
   ? add a feature whereby the unit logsout after two double clicks. (commented
@@ -140,11 +133,13 @@
     menu.
   % make it possible to import creds via XML file
   % add the ability to change the master password
-  x add salt to the hashed master password.
-  x ensure we don't read more bytes than that which we can accomodate in the 
-    buffer
-  x encrypt the usernames (need to confirm by examining EEprom)
-  x encrpt the account names (need to confirm by examining EEprom)
+  * encrypt the usernames (need to confirm by examining EEprom)
+  * encrpt the account names (need to confirm by examining EEprom)
+  * add salt to the hashed master password.
+  * learn how to set the lock bits
+  * salt the encrypted account name, username and password, probably with 4
+    bytes associated with the position of the account.  This will reduce the 
+    size of the master password from 15 to 11(?) or 12?
   * implement with a better font
   * work on the workflow; which menu items are defaulted after which events.
   * Delete account (account name, username, password)
@@ -188,7 +183,12 @@
   ========
   - Program memory is nearly full so be careful and watch out for flaky 
     behavior.  Once over 80% of global space you're in trouble. The LED library 
-    is large.
+    is large.  Understand the existing defects before use.
+
+  - This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
   Suggestions
   ===========
@@ -197,7 +197,8 @@
     and learn more about embedded programming.
   - For anyone unfamiliar w/ Arduino when the device is powered on first setup() 
     runs and then loop() runs, in a loop, in perpetuity.
-  - Set tab spacing to 4 characters.
+  - Set tab spacing to 4 characters if you're modifying this program.  Do not
+    insert tab characters into this program!
 
   Contributors
   ============
@@ -209,22 +210,12 @@
 
   Copyright
   =========
-  - Copyright ©2018, ©2019 Daniel J Murphy <dan-murphy@comcast.net>
+  - Copyright ©2019 Daniel J Murphy <dan-murphy@comcast.net>
   
   License
   =======
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  This work is licensed under a Creative Commons 
+  Attribution-NonCommercial-ShareAlike 4.0 International License.
 
   Libraries 
   =========
@@ -241,8 +232,8 @@
   Components
   ==========
     Component                       Retail
-    Description	                    Cost
-    ===========                     =====
+    Description	                    Cost						Procurement as of early 2019
+    ===========                     =====						============================
   - Arduino Pro Micro (ATMega32u4)  $2.8700         https://www.aliexpress.com/item/New-Pro-Micro-for-arduino-ATmega32U4-5V-16MHz-Module-with-2-row-pin-header-For-Leonardo/32768308647.html?spm=a2g0s.9042311.0.0.12914c4d0Xj2PY
   - RGB LED                          0.0200         https://www.aliexpress.com/item/Free-shipping-100pcs-5mm-RGB-LED-Common-Cathode-Tri-Color-Emitting-Diodes-f5-RGB-Diffused/32330160607.html?spm=2114.search0104.3.17.6ae840aaohPCBN&ws_ab_test=searchweb0_0,searchweb201602_3_10065_10068_10130_318_10890_10547_319_10546_10548_317_10545_10696_450_10084_10083_10618_452_535_534_533_10307_532_204_10059_10884_323_325_10887_100031_320_321_322_10103_448_449_5728415,searchweb201603_55,ppcSwitch_0&algo_expid=106caae9-74c0-4f4a-b224-e96dd4f8efb1-2&algo_pvid=106caae9-74c0-4f4a-b224-e96dd4f8efb1&transAbTest=ae803_5
   - Momentary push button            0.0084         https://www.aliexpress.com/item/100pcs-lot-Mini-Micro-Momentary-Tactile-Push-Button-Switch-6-6-5mm-4-pin-ON-OFF/32858344336.html?spm=2114.search0104.3.25.2c612f04SiR6k5&ws_ab_test=searchweb0_0,searchweb201602_3_10065_10130_10068_10890_10547_319_10546_317_10548_10545_10696_453_10084_454_10083_10618_10307_537_536_10902_10059_10884_10887_321_322_10103,searchweb201603_55,ppcSwitch_0&algo_expid=6e5b9235-2049-47a5-b3d4-024991e840f0-3&algo_pvid=6e5b9235-2049-47a5-b3d4-024991e840f0&transAbTest=ae803_5
@@ -390,8 +381,6 @@
 #define getLoginFailures          read_eeprom_byte(GET_ADDR_LOGIN_FAILURES)
 #define getResetFlag              read_eeprom_byte(GET_ADDR_RESET_FLAG)
 #define getShowPasswordsFlag      read_eeprom_byte(GET_ADDR_SHOW_PW)
-//#define getKeyboardFlag           read_eeprom_byte(GET_ADDR_KEYBOARD_FLAG)
-//#define writeLoginFailures        write_eeprom_byte(GET_ADDR_LOGIN_FAILURES, loginFailures)
 
 //- Pins
 
@@ -684,7 +673,7 @@ void setup(void);                                                               
 void loop(void);                                                                // iterates forever
 void ProcessEvent(void) ;                                                       // to handle events as they arise
 void ConfirmChoice(int state);                                                  // confirms a Y/N choice input via rotary encoder
-void ReadFromSerial(char *buffer, uint8_t size, char *prompt);
+void ReadFromSerial(char *buffer, uint8_t size, char *prompt);									// get input from the keyboard
 void switchToEditMenu(void);
 void switchToSendCredsMenu(void);
 void switchToFindAcctMenu(void);
@@ -1187,7 +1176,7 @@ void ProcessEvent() {                                                           
         case EDIT_STYLE:
           EditAttribute(STATE_EDIT_STYLE, DEFAULT_STYLE_EDIT_POS);
           break; 
-        case GENERATE_PASSWORD:                                                // Automatic UUID enter password 
+        case GENERATE_PASSWORD:                                               // Automatic UUID enter password 
           machineState = STATE_EDIT_PASSWORD;                                 // pretend we're entering the password
           setUUID(password, PASSWORD_SIZE, true);                             // put a UUID in the password char array
           BlankLine2();
@@ -1419,7 +1408,6 @@ void switchToEditMenu(){
 }
 
 void switchToSendCredsMenu() {
-  //acctPosition = position;  //misbehaving
   menuNumber = SEND_MENU_NUMBER;
   elements = SEND_MENU_ELEMENTS;
   int arraySize = 0;
@@ -1440,10 +1428,8 @@ void switchToFindAcctMenu() {
   machineState = STATE_FIND_ACCOUNT;
   position = headPosition; 
   acctPosition = headPosition;
-//  Serial.println(position);
   ShowMenu(FIND_ACCOUNT, mainMenu);
   readAcctFromEEProm(position, accountName);
-//  Serial.println((char *) accountName);
   DisplayLine2(accountName);
   event = EVENT_NONE;
 }
@@ -1784,23 +1770,15 @@ boolean authenticateMaster(uint8_t *enteredPassword) {                          
   while (enteredPassword[pos++] != NULL_TERM);                                  // make sure the unencrypted password is 16 chars long
   while (pos < (MASTER_PASSWORD_SIZE - 1)) enteredPassword[pos++] = NULL_TERM;  // "           "              " , right padded w/ NULL terminator
   enteredPassword[MASTER_PASSWORD_SIZE - 1] = NULL_TERM;                        // NULL_TERM in index 13 no matter what (TODO: is this necessary?)
-  //Serial.print("enteredPassword: ");Serial.println((char *)enteredPassword);
-//DisableInterrupts();                                                        // disable interrupts
   byte aByte = EEPROM.read(GET_ADDR_MASTER_HASH);
-//EnableInterrupts();                                                         // re-enable interrupts (TODO: defer this?)
   if (aByte == INITIAL_MEMORY_STATE_BYTE){                                      // first time, we need to write instead of read
     setUUID(salt, MASTER_PASSWORD_SIZE, false);                                 // generate a random salt
-    //Serial.print("calced salt: ");Serial.println((char *)salt);
     eeprom_write_int_bytes(GET_ADDR_SALT, salt, MASTER_PASSWORD_SIZE);          // save the salt to EEprom
     memcpy(eepromMasterHash, salt, MASTER_PASSWORD_SIZE);                       // copy salt into the hashed master password variable
-    //Serial.print("eepromMasterHash w/ salt: ");Serial.println((char *)eepromMasterHash);
     memcpy(eepromMasterHash + MASTER_PASSWORD_SIZE,                             // concatinate the salt and the master password
            enteredPassword, 
            MASTER_PASSWORD_SIZE                          );
-    //Serial.print("eepromMasterHash w/ all: ");Serial.println((char *)eepromMasterHash);
-    //Serial.print("eepromMasterHash 2nd half: ");Serial.println((char *) eepromMasterHash + MASTER_PASSWORD_SIZE);
     sha256Hash(eepromMasterHash);                                               // hash the master password in place; pass in 32, get back 16
-    //Serial.print("hashed eepromMasterHash: ");Serial.println((char *)eepromMasterHash);
     eeprom_write_int_bytes(GET_ADDR_MASTER_HASH,                                // only write the first 16 bytes of the hashed master password
                            eepromMasterHash, 
                            HASHED_MASTER_PASSWORD_SZ);                          // write the (hased) master password to EEprom
@@ -1809,19 +1787,14 @@ boolean authenticateMaster(uint8_t *enteredPassword) {                          
     eeprom_read_int_string(GET_ADDR_MASTER_HASH,                                // read hashed master password from EEprom
                            eepromMasterHash,                                    // to compare against the hash of the salt||entered password.
                            HASHED_MASTER_PASSWORD_SZ);
-    //Serial.print("eepromMasterHash: ");Serial.println((char *)eepromMasterHash);
     eeprom_read_int_string(GET_ADDR_SALT,                                       // read salt from EEprom
                            salt, 
                            MASTER_PASSWORD_SIZE);
-    //Serial.print("salt: ");Serial.println((char *)salt);
     memcpy(enteredMasterHash, salt, MASTER_PASSWORD_SIZE);                      // copy salt into the hashed master password variable
-    //Serial.print("enteredMasterHash: ");Serial.println((char *)enteredMasterHash);
     memcpy(enteredMasterHash + MASTER_PASSWORD_SIZE,                            // concatinate the salt and the master password
            enteredPassword,                                                     // entered password
            MASTER_PASSWORD_SIZE                          );
-    //Serial.print("enteredMasterHash: ");Serial.println((char *)enteredMasterHash);
     sha256Hash(enteredMasterHash);                                              // hash the master salt||entered password
-    //Serial.print("enteredMasterHash: ");Serial.println((char *)enteredMasterHash);
     if (0 == memcmp(enteredMasterHash,
                     eepromMasterHash,
                     HASHED_MASTER_PASSWORD_SZ)) {                               // entered password hash matches master password hash, authenticated
@@ -1830,7 +1803,7 @@ boolean authenticateMaster(uint8_t *enteredPassword) {                          
       writeLoginFailures();                                                     // record loginFailures in EEprom
                                                                                 // encrypt a word using the master password as the key
     } else {                                                                    // failed authentication
-// Begin: decoy password comment                                                // Following section commented out because decoy logic needs to change to accomodate a hashed master password
+// Begin: decoy password comment                                                // Following section commented out because decoy logic needs to change to accomodate a hashed master password, and because we're out of space
 //        if (0 == strcmp(password,strcat(buff,"FR"))) {                        // check for decoy password; masterPassword + "FR".
 //          loginFailures = MAX_LOGIN_FAILURES + 2;                             // to turn this functionality back on we'd need to store a hashed version of masterPassword + "FR"
 //          event = EVENT_RESET;                                                // in EEprom for comparison to the input password.
@@ -1843,9 +1816,6 @@ boolean authenticateMaster(uint8_t *enteredPassword) {                          
       return false;
     }
   }
-//aes.setKey(enteredPassword, MASTER_PASSWORD_SIZE);                            // set the key for aes to equal the un-hashed entered master password
-//pos = 0;
-//while (pos < (MASTER_PASSWORD_SIZE - 1)) enteredPassword[pos++] = NULL_TERM;  // clear out the memory used for the entered master password
   return true;
 }                                                                               // and check it against the same word that's stored hashed
                                                                                 // in eeprom.  This word is written (hashed) to eeprom the 
@@ -2310,12 +2280,9 @@ void CopyChip(uint8_t restoreFlag) {                                            
 }
 
 void writePointers(uint8_t accountPosition, uint8_t *accountName) {             // traverse through the linked list finding the right spot to insert this record in the list
-//Serial.print(F("--------------"));
-//Serial.print(F("1: "));Serial.println(accountPosition);
   if ((headPosition    == 0) &&
       (tailPosition    == 0) &&
       (accountPosition == 0)   ) {                                              // this is the first element added to the linked list
-//  Serial.println(F("2"));
     writePrevPtr(accountPosition, INITIAL_MEMORY_STATE_BYTE);
     writeNextPtr(accountPosition, INITIAL_MEMORY_STATE_BYTE);
     writeListHeadPos();
@@ -2324,44 +2291,32 @@ void writePointers(uint8_t accountPosition, uint8_t *accountName) {             
   
   uint8_t acctBuf[ACCOUNT_SIZE];                                                // a buffer large enough to accomodate the account name
   uint8_t currentPosition = headPosition;                                       // pointer to the position we're at as we step through the linked list
-//Serial.print(F("3: "));Serial.println(currentPosition);
   uint8_t prevPosition = getPrevPtr(currentPosition);                           // should always be INTIAL_MEMORY_STATE_BYTE.  This IS necessary.
-//Serial.print(F("4: "));Serial.println(prevPosition);
   readAcctFromEEProm(headPosition, acctBuf);                                    // reading the accountName for the head
-//Serial.print(F("5: "));Serial.println((char *)acctBuf);
   while ((currentPosition != INITIAL_MEMORY_STATE_BYTE   ) && 
          (strncmp(acctBuf, accountName, ACCOUNT_SIZE) < 0)     ) {              // if Return value < 0 then it indicates str1 is less than str2.
     prevPosition = currentPosition;                                             // save prevPosition as currentPosition because we'll eventually step over the element that's > accountPosition
-//  Serial.print(F("6: "));Serial.println(prevPosition);
     currentPosition = getNextPtr(currentPosition);                              // move to the next element in the linked list
-//  Serial.print(F("7: "));Serial.println(currentPosition);
     readAcctFromEEProm(currentPosition,acctBuf);                                // read that account name from EEprom
-//  Serial.print(F("8: "));Serial.println((char *)acctBuf);
   }
   if(currentPosition == headPosition) {                                         // inserting before the first element in the list
     headPosition = accountPosition;
-//  Serial.print(F("9: "));Serial.println(headPosition);
     writeListHeadPos();
   }
   if (currentPosition == INITIAL_MEMORY_STATE_BYTE) {                           // inserting an element at the end of the linked list
     tailPosition = accountPosition;
-//  Serial.print(F("10: "));Serial.println(tailPosition);
   }
   writePrevPtr(accountPosition, prevPosition   );                               // insert between prevPosition and currentPosition
-//Serial.print(F("11: "));Serial.println(prevPosition);
   writeNextPtr(accountPosition, currentPosition);
-//Serial.print(F("12: "));Serial.println(currentPosition);
   if (prevPosition != INITIAL_MEMORY_STATE_BYTE) {                              // if we're not the new head
-//  Serial.print(F("13"));
     writeNextPtr(prevPosition, accountPosition);                                // update the next pointer of the previous element with the account position.
   }
   if (currentPosition != INITIAL_MEMORY_STATE_BYTE) {                           // if we're not the next element of the tail
-//  Serial.print(F("14: "));Serial.println(accountPosition);
     writePrevPtr(currentPosition, accountPosition);                             // write set the previous pointer of the current element to the account position
   }
 }
 /*
-void FixCorruptLinkedList() {                                                   // Rebuild the linked list to fix any issues with the pointers
+void FixCorruptLinkedList() {                                                   // Rebuild the linked list to fix any issues with the pointers.  Unimplemented because of space restrictions.
 //  DisableInterrupts();
   setRed();
   DisplayLine2("Fixing corrupt");

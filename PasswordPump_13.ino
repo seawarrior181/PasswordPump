@@ -783,6 +783,8 @@ void setup() {                                                                  
   pinMode(BLUE_PIN,  OUTPUT);                                                   // "
   pinMode(BUTTON_PIN, INPUT_PULLUP);                                            // setup button pin for input enable internal 20k pull-up resistor, goes LOW 
                                                                                 // when pressed, HIGH when released
+  pinMode(ROTARY_PIN1, INPUT_PULLUP);        					// as per Rod Schlabach, thanks Rod!
+  pinMode(ROTARY_PIN2, INPUT_PULLUP);						// as per Rod Schlabach
   pinMode(ADC_READ_PIN, INPUT);                                                 // this pin will float in a high impedance/Hi-Z state and it's voltage
                                                                                 // will be read with every spin to seed the random number generator.
   randomSeed(analogRead(ADC_READ_PIN));                                         // do not ground this pin; use this or randomSeed(millis()); used for password 
